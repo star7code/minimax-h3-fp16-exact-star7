@@ -106,6 +106,21 @@ plugin does not do that silently.
 
 ## Installation and update
 
+ComfyUI Manager / Comfy Registry:
+
+```text
+Search: MiniMax H3 Native FP16 - Star7
+Package: minimax-h3-fp16-exact-star7
+```
+
+Comfy CLI:
+
+```bash
+comfy node install minimax-h3-fp16-exact-star7
+```
+
+Manual GitHub installation:
+
 Clone into `ComfyUI/custom_nodes`:
 
 ```bash
