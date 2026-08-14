@@ -7,4 +7,5 @@ test_outputs/
 tests/
 tools/
 *.json
+!examples/workflows/*.json
 BENCHMARK-RTX2080TI-INT8.md

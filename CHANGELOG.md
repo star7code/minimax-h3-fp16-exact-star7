@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 - 2026-08-15
+
+- Added a packaged RTX 20-series FP16 + activation-chunk example workflow.
+- Added Chinese setup, dependency, attention-backend, and connection guidance.
+- Added Registry metadata to the bundled workflow and removed the local reference-image filename.
+
 ## 2.0.0 - 2026-08-15
 
 - Added the recommended creation-time `MiniMax H3 Native FP16 Loader - Star7`.
