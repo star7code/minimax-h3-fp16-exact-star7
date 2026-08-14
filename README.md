@@ -10,6 +10,57 @@ The overflow method is derived from the MIT-licensed
 The Star7 edition adds workflow nodes, quantization-aware dispatch, scoped model
 patches, hardware checks, diagnostics, and ComfyUI packaging.
 
+## 中文说明
+
+本项目主要面向 RTX 20 系（Turing）以及其他没有原生 BF16 Tensor Core
+加速的 NVIDIA 显卡。推荐使用 **MiniMax H3 Native FP16 Loader - Star7**
+替代普通 UNET 加载器：模型创建阶段就指定 FP16 计算，同时保留符合条件的
+INT8 TensorWise / ConvRot 权重路径，并安装 MiniMax H3 的 FP16 防溢出修复。
+
+推荐连接顺序：
+
+```text
+MiniMax H3 Native FP16 Loader - Star7
+  -> LoRA Loader（可选）
+  -> MiniMax H3 Activation Chunk - Star7
+  -> Guider / Scheduler / Sampler
+```
+
+仓库内附带一份可直接导入的 RTX 20 系示例：
+[MiniMax-H3-FP16-Chunk-RTX20-Star7.json](examples/workflows/MiniMax-H3-FP16-Chunk-RTX20-Star7.json)。
+它复制自已经实测的 Star7 分块工作流，文件随本仓库发布，不引用开发机上的
+外部 JSON。导入后仍需按自己的安装目录选择 UNET、LoRA、CLIP、VAE 和参考图。
+
+示例的 RTX 2080 Ti 22GB 起始配置为：
+
+```text
+RoPE chunk_tokens:       8192
+MLP mlp_chunk_tokens:    4096
+attention_backend:       comfy_kitchen_int8
+auto_halve_on_oom:       true
+reuse_mlp_weights:       true
+```
+
+20 系示例选择 Comfy Kitchen INT8 attention，是因为在本机 RTX 2080 Ti
+实测中，它比针对 SM75 修改的 Sage2 路径更快。这是特定软硬件组合下的实测
+选择，并不表示所有显卡都应使用 CK。RTX 30/40 系如果已有稳定且更快的 Sage
+后端，可以把分块节点的 `attention_backend` 改为 `existing`，然后在前面连接
+自己的 Sage attention 节点。
+
+必需依赖：
+
+- [MiniMax H3 Activation Chunk - Star7](https://github.com/star7code/minimax-h3-chunk-star7)
+- [MiniMax H3 Audio Conditioning T8](https://github.com/T8mars/comfyui-minimax-h3-audio-T8)
+
+工作流还使用 ComfyUI-VideoHelperSuite、ComfyUI-Jjk-Nodes；NVIDIA RTX Video
+Super Resolution 节点位于末端并可旁路。只安装本 FP16 插件不会自动安装这些
+第三方节点，可在 ComfyUI Manager 导入工作流后使用“安装缺失节点”。
+
+注意：原来的 `MiniMax H3 FP16 Exact Fix - Star7` 后置节点仅用于旧工作流兼容。
+新工作流不要在 Native FP16 Loader 后再重复连接它，因为加载节点已经包含数值
+修复。对于支持原生 BF16 的 Ampere 或更新架构，本插件会绕过不必要的 FP16
+强制路径；它不是面向所有显卡的通用加速器。
+
 ## Recommended node
 
 Use **MiniMax H3 Native FP16 Loader - Star7** instead of the standard UNET
@@ -140,7 +191,7 @@ Restart ComfyUI after installation or update.
 ## Example diagnostic
 
 ```text
-[Star7 H3 FP16] Enabled v2.0.0 | mode=loader-quantized | backend=int8_tensorwise+convrot:200 | force-cast=False | weight-patches=0 | blocks=50
+[Star7 H3 FP16] Enabled v2.0.1 | mode=loader-quantized | backend=int8_tensorwise+convrot:200 | force-cast=False | weight-patches=0 | blocks=50
 ```
 
 Modes:

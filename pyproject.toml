@@ -1,6 +1,6 @@
 [project]
 name = "minimax-h3-fp16-exact-star7"
-version = "2.0.0"
+version = "2.0.1"
 description = "Quantization-aware native FP16 loader and exact-math overflow fix for ComfyUI MiniMax H3 on pre-BF16 GPUs."
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
