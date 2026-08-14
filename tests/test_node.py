@@ -2,6 +2,8 @@ import importlib.util
 import copy
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 import torch
 
@@ -21,10 +23,10 @@ def load_nodes():
 
 def test_registration():
     module = load_nodes()
+    assert "MiniMaxH3FP16LoaderStar7" in module.NODE_CLASS_MAPPINGS
     assert "MiniMaxH3FP16ExactFixStar7" in module.NODE_CLASS_MAPPINGS
-    assert module.NODE_DISPLAY_NAME_MAPPINGS["MiniMaxH3FP16ExactFixStar7"].endswith(
-        "Star7"
-    )
+    for display_name in module.NODE_DISPLAY_NAME_MAPPINGS.values():
+        assert display_name.endswith("Star7")
 
 
 def test_scale_constants_are_powers_of_two():
@@ -34,8 +36,7 @@ def test_scale_constants_are_powers_of_two():
         assert integer > 0 and integer & (integer - 1) == 0
 
 
-def test_model_patch_is_scoped_and_complete():
-    module = load_nodes()
+def make_h3_patcher(module, quantized=False):
     import comfy.ldm.minimax.model as minimax
 
     class TinyAttention(torch.nn.Module):
@@ -62,6 +63,11 @@ def test_model_patch_is_scoped_and_complete():
     torch.nn.Module.__init__(diffusion)
     diffusion.condition_proj = torch.nn.Linear(2, 2, bias=False)
     diffusion.blocks = torch.nn.ModuleList([TinyBlock(), TinyBlock()])
+    if quantized:
+        linear = diffusion.blocks[0].mlp.fc1
+        linear.quant_format = "int8_tensorwise"
+        linear.layout_type = "TensorWiseINT8Layout"
+        linear.weight._params = SimpleNamespace(convrot=True)
 
     class FakePatcher:
         def __init__(self):
@@ -69,9 +75,14 @@ def test_model_patch_is_scoped_and_complete():
             self.model_options = {"transformer_options": {}}
             self.object_patches = {}
             self.compute_dtype = None
+            self.force_cast_weights = False
+            self.patches = {}
 
         def clone(self):
-            return copy.copy(self)
+            cloned = copy.copy(self)
+            cloned.model_options = copy.deepcopy(self.model_options)
+            cloned.object_patches = self.object_patches.copy()
+            return cloned
 
         def get_model_object(self, name):
             assert name == "diffusion_model"
@@ -79,21 +90,157 @@ def test_model_patch_is_scoped_and_complete():
 
         def set_model_compute_dtype(self, dtype):
             self.compute_dtype = dtype
+            self.force_cast_weights = dtype is not None
+            self.add_object_patch("manual_cast_dtype", dtype)
 
         def add_object_patch(self, name, value):
             self.object_patches[name] = value
 
-    patcher = FakePatcher()
+    return FakePatcher(), diffusion
+
+
+def apply_node(module, patcher):
     node = module.MiniMaxH3FP16ExactFixStar7()
-    patched = node.patch(patcher, enabled=True)[0]
+    with (
+        mock.patch.object(torch.cuda, "is_available", return_value=True),
+        mock.patch.object(torch.cuda, "get_device_capability", return_value=(7, 5)),
+    ):
+        return node.patch(patcher, enabled=True)[0]
+
+
+def test_dense_model_patch_is_scoped_and_complete():
+    module = load_nodes()
+    patcher, diffusion = make_h3_patcher(module)
+    patched = apply_node(module, patcher)
     assert patched is not patcher
     assert patched.compute_dtype is torch.float16
+    assert patched.force_cast_weights is True
     assert patched.model_options["transformer_options"][module.PATCH_FLAG] == module.NODE_VERSION
-    assert len(patched.object_patches) == 1 + 3 * len(diffusion.blocks)
+    assert patched.model_options["transformer_options"][module.PATCH_MODE] == "postload-dense"
+    assert len(patched.object_patches) == 2 + 3 * len(diffusion.blocks)
+
+
+def test_quantized_model_preserves_native_dispatch():
+    module = load_nodes()
+    patcher, _diffusion = make_h3_patcher(module, quantized=True)
+    patched = apply_node(module, patcher)
+    assert patched.compute_dtype is torch.float16
+    assert patched.force_cast_weights is False
+    assert patched.object_patches["manual_cast_dtype"] is torch.float16
+    assert patched.model_options["transformer_options"][module.PATCH_MODE] == "postload-quantized"
+
+
+def test_quantization_summary_reports_convrot():
+    module = load_nodes()
+    _patcher, diffusion = make_h3_patcher(module, quantized=True)
+    assert module._quantization_summary(diffusion) == {
+        "int8_tensorwise+convrot": 1,
+    }
+
+
+def test_native_loader_builds_fp16_operations_before_model_creation():
+    module = load_nodes()
+    state_dict = {"marker": object()}
+    metadata = {"version": 1}
+    model_config = SimpleNamespace(quant_config={"layer": {"format": "int8_tensorwise"}})
+    operations = object()
+    base_model = SimpleNamespace()
+    patched_model = SimpleNamespace()
+
+    with (
+        mock.patch.object(
+            module.comfy.utils,
+            "load_torch_file",
+            return_value=(state_dict, metadata),
+        ),
+        mock.patch.object(
+            module.comfy.utils,
+            "convert_old_quants",
+            return_value=(state_dict, metadata),
+        ),
+        mock.patch.object(module, "_detect_h3_config", return_value=model_config),
+        mock.patch.object(
+            module.comfy.model_management,
+            "get_torch_device",
+            return_value=torch.device("cuda"),
+        ),
+        mock.patch.object(
+            module.comfy.ops,
+            "pick_operations",
+            return_value=operations,
+        ) as pick_operations,
+        mock.patch.object(
+            module.comfy.sd,
+            "load_diffusion_model_state_dict",
+            return_value=base_model,
+        ) as load_state_dict,
+        mock.patch.object(
+            module,
+            "_patch_h3_model",
+            return_value=patched_model,
+        ) as patch_h3,
+    ):
+        result = module._load_h3_native_fp16(
+            "model.safetensors", disable_dynamic=True
+        )
+
+    assert result is patched_model
+    assert result.cached_patcher_init == (
+        module._load_h3_native_fp16,
+        ("model.safetensors",),
+    )
+    pick_operations.assert_called_once_with(
+        torch.float16,
+        torch.float16,
+        load_device=torch.device("cuda"),
+        model_config=model_config,
+    )
+    options = load_state_dict.call_args.kwargs["model_options"]
+    assert options == {
+        "dtype": torch.float16,
+        "custom_operations": operations,
+    }
+    assert load_state_dict.call_args.kwargs["disable_dynamic"] is True
+    patch_h3.assert_called_once_with(base_model, loader_native=True)
+
+
+def test_model_detection_strips_diffusion_prefix():
+    module = load_nodes()
+    state_dict = {"model.blocks.0.weight": object()}
+    stripped = {"blocks.0.weight": state_dict["model.blocks.0.weight"]}
+    config = object.__new__(module.comfy.supported_models.MiniMaxH3)
+
+    with (
+        mock.patch.object(
+            module.comfy.model_detection,
+            "unet_prefix_from_state_dict",
+            return_value="model.",
+        ),
+        mock.patch.object(
+            module.comfy.utils,
+            "state_dict_prefix_replace",
+            return_value=stripped,
+        ) as replace_prefix,
+        mock.patch.object(
+            module.comfy.model_detection,
+            "model_config_from_unet",
+            return_value=config,
+        ) as detect_config,
+    ):
+        assert module._detect_h3_config(state_dict, {}) is config
+
+    replace_prefix.assert_called_once_with(
+        state_dict, {"model.": ""}, filter_keys=True
+    )
+    detect_config.assert_called_once_with(stripped, "", metadata={})
 
 
 if __name__ == "__main__":
     test_registration()
     test_scale_constants_are_powers_of_two()
-    test_model_patch_is_scoped_and_complete()
+    test_dense_model_patch_is_scoped_and_complete()
+    test_quantized_model_preserves_native_dispatch()
+    test_quantization_summary_reports_convrot()
+    test_native_loader_builds_fp16_operations_before_model_creation()
+    test_model_detection_strips_diffusion_prefix()
     print("MiniMax H3 FP16 Exact Fix - Star7 tests passed")

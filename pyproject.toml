@@ -1,7 +1,7 @@
 [project]
 name = "minimax-h3-fp16-exact-star7"
-version = "1.0.0"
-description = "Workflow-scoped exact-math FP16 compatibility patch for native ComfyUI MiniMax H3 on pre-BF16 GPUs."
+version = "2.0.0"
+description = "Quantization-aware native FP16 loader and exact-math overflow fix for ComfyUI MiniMax H3 on pre-BF16 GPUs."
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = []
@@ -20,4 +20,4 @@ Upstream = "https://github.com/Amduraznak/minimax-h3-fp16-fix"
 
 [tool.comfy]
 PublisherId = "star7code"
-DisplayName = "MiniMax H3 FP16 Exact Fix - Star7"
+DisplayName = "MiniMax H3 Native FP16 - Star7"
