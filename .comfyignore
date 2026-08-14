@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.git/
+.github/
+logs/
+test_outputs/
+tests/
+tools/
+*.json
+BENCHMARK-RTX2080TI-INT8.md

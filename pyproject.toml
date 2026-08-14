@@ -1,0 +1,23 @@
+[project]
+name = "minimax-h3-fp16-exact-star7"
+version = "1.0.0"
+description = "Workflow-scoped exact-math FP16 compatibility patch for native ComfyUI MiniMax H3 on pre-BF16 GPUs."
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = []
+classifiers = [
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Environment :: GPU :: AMD ROCm",
+]
+
+[project.urls]
+Repository = "https://github.com/star7code/minimax-h3-fp16-exact-star7"
+Documentation = "https://github.com/star7code/minimax-h3-fp16-exact-star7#readme"
+"Bug Tracker" = "https://github.com/star7code/minimax-h3-fp16-exact-star7/issues"
+Upstream = "https://github.com/Amduraznak/minimax-h3-fp16-fix"
+
+[tool.comfy]
+PublisherId = "star7code"
+DisplayName = "MiniMax H3 FP16 Exact Fix - Star7"
