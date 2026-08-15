@@ -14,7 +14,7 @@ import comfy.supported_models
 import comfy.utils
 
 
-NODE_VERSION = "2.0.1"
+NODE_VERSION = "2.0.2"
 PATCH_FLAG = "star7_minimax_h3_fp16_exact_fix"
 PATCH_MODE = "star7_minimax_h3_fp16_mode"
 K_OUT_PROJ = 64.0

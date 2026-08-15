@@ -52,9 +52,10 @@ reuse_mlp_weights:       true
 - [MiniMax H3 Activation Chunk - Star7](https://github.com/star7code/minimax-h3-chunk-star7)
 - [MiniMax H3 Audio Conditioning T8](https://github.com/T8mars/comfyui-minimax-h3-audio-T8)
 
-工作流还使用 ComfyUI-VideoHelperSuite、ComfyUI-Jjk-Nodes；NVIDIA RTX Video
-Super Resolution 节点位于末端并可旁路。只安装本 FP16 插件不会自动安装这些
-第三方节点，可在 ComfyUI Manager 导入工作流后使用“安装缺失节点”。
+工作流还使用 ComfyUI-VideoHelperSuite、ComfyUI-Jjk-Nodes。发布版已经彻底移除
+NVIDIA RTX Video Super Resolution 节点，并将 VAE 解码直接连接到视频封装，
+因此没有安装 RTX 超分模型也可以运行。其他缺失节点可在 ComfyUI Manager
+导入工作流后使用“安装缺失节点”。
 
 注意：原来的 `MiniMax H3 FP16 Exact Fix - Star7` 后置节点仅用于旧工作流兼容。
 新工作流不要在 Native FP16 Loader 后再重复连接它，因为加载节点已经包含数值
@@ -191,7 +192,7 @@ Restart ComfyUI after installation or update.
 ## Example diagnostic
 
 ```text
-[Star7 H3 FP16] Enabled v2.0.1 | mode=loader-quantized | backend=int8_tensorwise+convrot:200 | force-cast=False | weight-patches=0 | blocks=50
+[Star7 H3 FP16] Enabled v2.0.2 | mode=loader-quantized | backend=int8_tensorwise+convrot:200 | force-cast=False | weight-patches=0 | blocks=50
 ```
 
 Modes:
