@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.2 - 2026-08-15
+
+- Removed NVIDIA RTX Video Super Resolution from the packaged RTX 20-series workflow.
+- Connected VAE decode directly to video output for a model-free postprocessing path.
+
 ## 2.0.1 - 2026-08-15
 
 - Added a packaged RTX 20-series FP16 + activation-chunk example workflow.
