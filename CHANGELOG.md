@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.3 - 2026-08-15
+
+- Replaced the external Jjk-Nodes prompt box in the packaged workflow with ComfyUI's built-in multiline text node.
+- Preserved the prompt node ID, position, size, content, and downstream link.
+
 ## 2.0.2 - 2026-08-15
 
 - Removed NVIDIA RTX Video Super Resolution from the packaged RTX 20-series workflow.
