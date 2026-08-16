@@ -1,5 +1,6 @@
 import importlib.util
 import copy
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -235,6 +236,65 @@ def test_model_detection_strips_diffusion_prefix():
     detect_config.assert_called_once_with(stripped, "", metadata={})
 
 
+def test_normalize_keeps_embedded_quantization_configs():
+    module = load_nodes()
+    quant = torch.tensor(list(b'{"format":"int8_tensorwise"}'), dtype=torch.uint8)
+    state_dict = {
+        "video_patch_proj.weight": object(),
+        "blocks.0.attn.qkv_proj.comfy_quant": quant,
+    }
+
+    normalized, metadata = module._normalize_h3_state_dict(state_dict, {})
+
+    assert normalized == state_dict
+    assert metadata == {}
+    assert module.comfy.utils.detect_layer_quantization(normalized, "") == {
+        "mixed_ops": True,
+    }
+
+
+def test_normalize_restores_unprefixed_legacy_quants_after_prefix_removal():
+    module = load_nodes()
+    prefix = "model.diffusion_model."
+    state_dict = {
+        f"{prefix}video_patch_proj.weight": object(),
+        f"{prefix}audio_patch_proj.weight": object(),
+        f"{prefix}blocks.0.attn.qkv_proj.weight": object(),
+        f"{prefix}blocks.0.attn.q_norm.weight": object(),
+        f"{prefix}blocks.0.attn.k_norm.weight": object(),
+        f"{prefix}blocks.0.mlp.fc1.weight": object(),
+    }
+    layer_config = {
+        "format": "int8_tensorwise",
+        "convrot": True,
+        "convrot_groupsize": 256,
+    }
+    metadata = {
+        "_quantization_metadata": json.dumps(
+            {"format_version": "1.0", "layers": {
+                "blocks.0.attn.qkv_proj": layer_config,
+            }}
+        )
+    }
+
+    normalized, normalized_metadata = module._normalize_h3_state_dict(
+        state_dict, metadata
+    )
+
+    assert "video_patch_proj.weight" in normalized
+    assert "audio_patch_proj.weight" in normalized
+    assert "blocks.0.attn.qkv_proj.comfy_quant" in normalized
+    assert not any(key.startswith(prefix) for key in normalized)
+    restored = bytes(
+        normalized["blocks.0.attn.qkv_proj.comfy_quant"].tolist()
+    ).decode("utf-8")
+    assert json.loads(restored) == layer_config
+    assert normalized_metadata == metadata
+    assert module.comfy.utils.detect_layer_quantization(normalized, "") == {
+        "mixed_ops": True,
+    }
+
+
 if __name__ == "__main__":
     test_registration()
     test_scale_constants_are_powers_of_two()
@@ -243,4 +303,6 @@ if __name__ == "__main__":
     test_quantization_summary_reports_convrot()
     test_native_loader_builds_fp16_operations_before_model_creation()
     test_model_detection_strips_diffusion_prefix()
+    test_normalize_keeps_embedded_quantization_configs()
+    test_normalize_restores_unprefixed_legacy_quants_after_prefix_removal()
     print("MiniMax H3 FP16 Exact Fix - Star7 tests passed")

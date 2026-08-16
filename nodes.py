@@ -14,7 +14,7 @@ import comfy.supported_models
 import comfy.utils
 
 
-NODE_VERSION = "2.0.2"
+NODE_VERSION = "2.0.4"
 PATCH_FLAG = "star7_minimax_h3_fp16_exact_fix"
 PATCH_MODE = "star7_minimax_h3_fp16_mode"
 K_OUT_PROJ = 64.0
@@ -213,13 +213,30 @@ def _detect_h3_config(state_dict, metadata):
     return model_config
 
 
+def _normalize_h3_state_dict(state_dict, metadata):
+    """Match ComfyUI's quant conversion around checkpoint prefix removal."""
+    state_dict, metadata = comfy.utils.convert_old_quants(
+        state_dict, "", metadata=metadata
+    )
+    prefix = comfy.model_detection.unet_prefix_from_state_dict(state_dict)
+    if prefix:
+        stripped = comfy.utils.state_dict_prefix_replace(
+            state_dict, {prefix: ""}, filter_keys=True
+        )
+        if stripped:
+            state_dict = stripped
+            if comfy.utils.detect_layer_quantization(state_dict, "") is None:
+                state_dict, metadata = comfy.utils.convert_old_quants(
+                    state_dict, "", metadata=metadata
+                )
+    return state_dict, metadata
+
+
 def _load_h3_native_fp16(unet_path, disable_dynamic=False):
     state_dict, metadata = comfy.utils.load_torch_file(
         unet_path, return_metadata=True
     )
-    state_dict, metadata = comfy.utils.convert_old_quants(
-        state_dict, "", metadata=metadata
-    )
+    state_dict, metadata = _normalize_h3_state_dict(state_dict, metadata)
     model_config = _detect_h3_config(state_dict, metadata)
     load_device = comfy.model_management.get_torch_device()
     operations = comfy.ops.pick_operations(
