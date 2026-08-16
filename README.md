@@ -1,9 +1,11 @@
 # MiniMax H3 FP16 Exact Fix - Star7
 
-Smart FP16 compatibility nodes for native ComfyUI MiniMax H3 on GPUs without
-native BF16 tensor-core support. Version 2 adds a creation-time FP16 loader and
-preserves ComfyUI MixedPrecisionOps INT8/ConvRot kernels instead of silently
-forcing quantized weights through a dense FP16 fallback.
+Run native ComfyUI MiniMax H3 with GPU FP16 compute while preserving
+INT8/ConvRot acceleration, reducing VRAM pressure and substantially improving
+high-quality long-video generation efficiency on GPUs without native BF16
+Tensor Core support. The creation-time loader avoids silently forcing
+quantized weights through a dense FP16 fallback and installs the H3 numerical
+overflow fix before inference.
 
 The overflow method is derived from the MIT-licensed
 [Amduraznak/minimax-h3-fp16-fix](https://github.com/Amduraznak/minimax-h3-fp16-fix).
@@ -12,10 +14,18 @@ patches, hardware checks, diagnostics, and ComfyUI packaging.
 
 ## 中文说明
 
-本项目主要面向 RTX 20 系（Turing）以及其他没有原生 BF16 Tensor Core
-加速的 NVIDIA 显卡。推荐使用 **MiniMax H3 Native FP16 Loader - Star7**
-替代普通 UNET 加载器：模型创建阶段就指定 FP16 计算，同时保留符合条件的
-INT8 TensorWise / ConvRot 权重路径，并安装 MiniMax H3 的 FP16 防溢出修复。
+本项目让原生 ComfyUI MiniMax H3 使用 GPU FP16 计算，同时保留 INT8/ConvRot
+加速路径，降低显存压力，并大幅提高高画质长视频在非原生 BF16 显卡上的运行
+效率。它主要面向 RTX 20 系（Turing）以及其他没有原生 BF16 Tensor Core 加速
+的 NVIDIA 显卡。推荐使用 **MiniMax H3 Native FP16 Loader - Star7** 替代普通
+UNET 加载器：模型创建阶段就指定 FP16 计算，并安装 MiniMax H3 的 FP16 防溢出
+修复。低显存模式仍可能按 ComfyUI 策略把暂时不用的权重卸载到内存；“GPU FP16
+计算”不表示整个模型必须始终常驻显存。
+
+从 v2.0.4 起，加载器会自动兼容 `10Eros_Max` 这类第三方 MiniMax H3 模型：
+文件可以使用 `model.diffusion_model.` 外层前缀，也可以把量化配置保存在文件级
+旧版 `_quantization_metadata` 中。识别依据是模型结构与量化元数据，不是文件名，
+所以官方无前缀模型和已经内嵌 `comfy_quant` 的模型继续走原来的加载路径。
 
 推荐连接顺序：
 
@@ -133,11 +143,18 @@ Version 2 corrects this:
 - the console reports the detected formats, layer counts, selected mode, force
   cast state, weight patch count, and DiT block count.
 
-The locally inspected `minimax_h3_*_int8_convrot.safetensors` checkpoint contains
-200 embedded `comfy_quant` configurations. All 200 decode to
-`{"format":"int8_tensorwise","convrot":true,"convrot_groupsize":256}`.
-Loader construction and dispatch invariants were validated on the RTX 2080 Ti
-setup; performance and output still require an end-to-end render after updating.
+The locally inspected official `minimax_h3_*_int8_convrot.safetensors`
+checkpoint contains 200 embedded `comfy_quant` configurations. All 200 decode
+to `{"format":"int8_tensorwise","convrot":true,"convrot_groupsize":256}`.
+
+Version 2.0.4 also recognizes equivalent native H3 checkpoints that are wrapped
+in `model.diffusion_model.` and store those layer configurations in legacy
+file-level `_quantization_metadata`. The full 19.5 GiB
+`10Eros_Max_h3_fl2va_pruned_int8_convrot.safetensors` file was loaded locally
+through the dedicated loader and verified as `MiniMaxH3Model`, 50 blocks, 200
+`int8_tensorwise+convrot` layers, FP16 compute, `loader-quantized` mode, and
+`force_cast_weights=false`. This validates model loading and backend selection;
+it is not a performance claim for every third-party checkpoint or workflow.
 
 When combining version 2 with an activation/MLP chunk node, that node must also
 preserve weight-only quantized tensors. If an older chunk implementation keeps
@@ -193,7 +210,7 @@ Restart ComfyUI after installation or update.
 ## Example diagnostic
 
 ```text
-[Star7 H3 FP16] Enabled v2.0.2 | mode=loader-quantized | backend=int8_tensorwise+convrot:200 | force-cast=False | weight-patches=0 | blocks=50
+[Star7 H3 FP16] Enabled v2.0.4 | mode=loader-quantized | backend=int8_tensorwise+convrot:200 | force-cast=False | weight-patches=0 | blocks=50
 ```
 
 Modes:
@@ -222,12 +239,14 @@ Python 3.13, PyTorch CUDA 13, and native ComfyUI MiniMax H3.
 | Model / loading path | Status | Notes |
 |---|---|---|
 | Native ComfyUI MiniMax H3 dense BF16 or FP32 safetensors | Supported | Loader creates dense FP16 weights/ops and installs overflow protection |
-| Native ComfyUI MiniMax H3 `int8_tensorwise` + ConvRot safetensors | Targeted and structurally validated | Recommended path for the current RTX 2080 Ti workflow; all 200 embedded quantization configs were verified, with an end-to-end render still pending |
+| Native ComfyUI MiniMax H3 `int8_tensorwise` + ConvRot safetensors | Supported and locally loaded | Recommended path for the current RTX 2080 Ti workflow; all 200 embedded quantization configs were verified |
+| `10Eros_Max`-style native H3 checkpoint with `model.diffusion_model.` prefix and legacy file-level `_quantization_metadata` | Supported and locally loaded | Automatically strips the wrapper and restores the native MixedPrecisionOps configuration; no filename-specific handling |
 | Native ComfyUI MiniMax H3 MixedPrecisionOps `convrot_w4a4` or `asym_w4a8_int8` | Dispatch preserved, not locally rendered | The loader retains quantized weights and FP16 operation metadata, but these formats still require end-to-end validation |
 | Standard ComfyUI LoRA on a quantized model | Conditional | Correct FP16 policy remains active, but dynamic/low-VRAM weight functions may dequantize patched layers |
 | MiniMax H3 LoRA loader that explicitly preserves or requantizes its quantized layout | Compatible in principle | Verify its own documentation and the runtime diagnostic |
 | GGUF, GPTQ, bitsandbytes, or another custom quantized loader | Unsupported | These do not use the native MixedPrecisionOps contract handled here |
-| Non-native or forked H3 model class | Unsupported | The patch intentionally requires native `MiniMaxH3Model` |
+| Third-party checkpoint that still resolves to native `MiniMaxH3Model` | Supported when its tensor layout and quantization format are native-compatible | Cosmetic merges and packaging changes are acceptable; changed architectures are not |
+| Non-native or structurally modified H3 model class | Unsupported | The patch intentionally requires native `MiniMaxH3Model` |
 | Non-H3 diffusion model | Unsupported | Use that model family's own dtype policy |
 
 The plugin does not make every operation INT8. Residual accumulation, overflow

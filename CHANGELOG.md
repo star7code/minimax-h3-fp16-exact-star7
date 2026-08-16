@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.4 - 2026-08-17
+
+- Added automatic support for native MiniMax H3 checkpoints wrapped with a
+  `model.diffusion_model.` prefix and legacy file-level quantization metadata.
+- Verified full loading of the third-party `10Eros_Max` INT8/ConvRot model as
+  native FP16 MixedPrecisionOps: 50 blocks and 200 ConvRot layers.
+- Preserved the existing behavior for official unprefixed checkpoints and
+  checkpoints that already contain embedded `comfy_quant` configurations.
+
 ## 2.0.3 - 2026-08-15
 
 - Replaced the external Jjk-Nodes prompt box in the packaged workflow with ComfyUI's built-in multiline text node.
