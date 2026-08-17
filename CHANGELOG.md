@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.5 - 2026-08-17
+
+- Marked the legacy post-load `MiniMax H3 FP16 Exact Fix` node as deprecated
+  so it is hidden from new-node search while old workflows remain compatible.
+
 ## 2.0.4 - 2026-08-17
 
 - Added automatic support for native MiniMax H3 checkpoints wrapped with a

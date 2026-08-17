@@ -26,6 +26,7 @@ def test_registration():
     module = load_nodes()
     assert "MiniMaxH3FP16LoaderStar7" in module.NODE_CLASS_MAPPINGS
     assert "MiniMaxH3FP16ExactFixStar7" in module.NODE_CLASS_MAPPINGS
+    assert module.MiniMaxH3FP16ExactFixStar7.DEPRECATED is True
     for display_name in module.NODE_DISPLAY_NAME_MAPPINGS.values():
         assert display_name.endswith("Star7")
 

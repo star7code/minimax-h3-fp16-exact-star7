@@ -298,6 +298,8 @@ class MiniMaxH3FP16LoaderStar7:
 
 
 class MiniMaxH3FP16ExactFixStar7:
+    DEPRECATED = True
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -340,5 +342,5 @@ NODE_CLASS_MAPPINGS = {
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "MiniMaxH3FP16LoaderStar7": "MiniMax H3 Native FP16 Loader - Star7",
-    "MiniMaxH3FP16ExactFixStar7": "MiniMax H3 FP16 Exact Fix - Star7",
+    "MiniMaxH3FP16ExactFixStar7": "MiniMax H3 FP16 Exact Fix (Legacy) - Star7",
 }
