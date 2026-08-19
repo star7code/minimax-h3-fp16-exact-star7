@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.6 - 2026-08-19
+
+- Updated the packaged RTX 20-series workflow to the final chunk-node defaults
+  and set `RandomNoise` to randomize after every generation. Both positional
+  and named seed-mode values now agree across ComfyUI frontend versions.
+
 ## 2.0.5 - 2026-08-17
 
 - Marked the legacy post-load `MiniMax H3 FP16 Exact Fix` node as deprecated

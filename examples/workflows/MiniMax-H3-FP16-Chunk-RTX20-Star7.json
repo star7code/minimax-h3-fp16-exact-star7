@@ -158,7 +158,7 @@
       "type": "BasicGuider",
       "pos": [
         -1039.1130140105356,
-        5403.68711549917
+        5483.68711549917
       ],
       "size": [
         397.33564153189445,
@@ -207,7 +207,7 @@
       "type": "SamplerCustomAdvanced",
       "pos": [
         -1028.8938963528951,
-        5525.588357534217
+        5605.588357534217
       ],
       "size": [
         378.9815296162383,
@@ -358,7 +358,7 @@
         }
       },
       "widgets_values": [
-        "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\nintegrated_multimodal_description: [Shot 1] Cinematic, high-end 3D anime realism, an extreme close shot begins from <Picture 1>, fully preserving the young woman’s appearance, intense forward-leaning posture, lavender hair strands falling across her face, soft freckles, focused amber-brown eyes, black tactical outerwear, and the blurred urban street background with daylight filtering through trees and a dark purple luminous mass in the distance. She is already reaching toward the lens as established in <Picture 1>. The camera holds close and shakes slightly with small amplitude, as if the viewer has just fallen backward onto the pavement. In the first second, her gloved hand moves into clearer focus as she grabs toward the viewer with urgency rather than aggression. She leans even closer, her brows tightening, and says in a low, breath-caught voice (S1): <d>[Chinese] 抓住我。</d> Without cutting, the camera is pulled forward a small distance as if her hand has made contact. At around 00:02.500, the frame steadies slightly while strands of her lavender hair sway across her cheek. She turns her eyes briefly past the viewer’s shoulder toward the glowing disturbance in the background, then snaps her gaze back. Her breathing becomes more visible in her shoulders and parted lips. At around 00:04.500, she braces, shifts one knee forward just out of frame, and exerts force to pull the viewer upright; the camera rises with her in one continuous motion. As the camera lifts, the background opens a little, revealing more of the empty street, drifting dust, and the ominous pulsing purple light behind her. At around 00:06.000, she steps half a pace closer to shield the viewer, placing herself between the lens and the distant threat. Her expression softens for a beat without losing tension. She keeps one hand near the viewer as if making sure they are steady, then says with controlled urgency (S1): <d>[Chinese] 别回头，跟我走。</d> In the final second, she begins to guide the viewer to move with her; the camera starts to pivot slightly to the right as if preparing to run beside her, while the purple glow flickers behind her shoulder and her hair catches the light before the shot ends mid-motion.\n\noverall_soundscape: A quiet outdoor city ambience runs underneath the shot, with distant wind through roadside trees and faint urban room-tone-like street hush. Close to the camera, her clothing shifts softly, her movement causes light scuffs against the ground, and her breathing is audible during the pull-up motion. A low unstable energy hum pulses from the distant purple disturbance near the end.\n\nnon_diegetic_music: Sparse low electronic pulses begin almost immediately, joined by restrained string textures at a slow tempo. The music grows slightly in intensity after she says the second line, then holds tension without a full climax.\n"
+        "# MiniMax H3 无参考图版本提示词\n\nintegrated_multimodal_description: [Shot 1] Cinematic, high-end 3D anime realism. An extreme close shot opens on a young woman leaning intensely toward the camera. She has lavender hair with loose strands falling across her face, soft freckles, focused amber-brown eyes, and black tactical outerwear. Behind her is a blurred urban street in daylight, with trees filtering soft natural light and a dark purple luminous mass pulsing ominously in the distance. She is already reaching toward the lens as the shot begins.\n\nThe camera holds close and shakes slightly with small amplitude, as if the viewer has just fallen backward onto the pavement. In the first second, her gloved hand moves into clearer focus as she reaches toward the viewer with urgency rather than aggression. She leans even closer, her brows tightening, and says in a low, breath-caught voice (S1): <d>[Chinese] 抓住我。</d>\n\nWithout cutting, the camera is pulled forward a small distance as if her hand has made contact. At around 00:02.500, the frame steadies slightly while strands of her lavender hair sway across her cheek. She turns her eyes briefly past the viewer’s shoulder toward the glowing disturbance in the background, then snaps her gaze back. Her breathing becomes more visible in her shoulders and parted lips.\n\nAt around 00:04.500, she braces, shifts one knee forward just out of frame, and exerts force to pull the viewer upright; the camera rises with her in one continuous motion. As the camera lifts, the background opens a little, revealing more of the empty street, drifting dust, and the ominous pulsing purple light behind her.\n\nAt around 00:06.000, she steps half a pace closer to shield the viewer, placing herself between the lens and the distant threat. Her expression softens for a beat without losing tension. She keeps one hand near the viewer as if making sure they are steady, then says with controlled urgency (S1): <d>[Chinese] 别回头，跟我走。</d>\n\nIn the final second, she begins to guide the viewer to move with her; the camera starts to pivot slightly to the right as if preparing to run beside her, while the purple glow flickers behind her shoulder and her lavender hair catches the changing light before the shot ends mid-motion.\n\noverall_soundscape: A quiet outdoor city ambience runs underneath the shot, with distant wind through roadside trees and faint urban street hush. Close to the camera, her clothing shifts softly, her movement causes light scuffs against the ground, and her breathing is audible during the pull-up motion. A low unstable energy hum pulses from the distant purple disturbance near the end.\n\nnon_diegetic_music: Sparse low electronic pulses begin almost immediately, joined by restrained string textures at a slow tempo. The music grows slightly in intensity after she says the second line, then holds tension without reaching a full climax.\n"
       ],
       "title": "Prompt / 提示词"
     },
@@ -535,7 +535,7 @@
         }
       },
       "widgets_values": [
-        "# MiniMax H3 单参考图基准提示词\n\nintegrated_multimodal_description: [Shot 1] Cinematic, high-end 3D anime realism. An extreme close shot opens on a young woman leaning intensely toward the camera. She has lavender hair with loose strands falling across her face, soft freckles, focused amber-brown eyes, and black tactical outerwear. Behind her is a blurred urban street in daylight, with trees filtering soft natural light and a dark purple luminous mass pulsing ominously in the distance. She is already reaching toward the lens as the shot begins.\n\nThe camera holds close and shakes slightly with small amplitude, as if the viewer has just fallen backward onto the pavement. In the first second, her gloved hand moves into clearer focus as she reaches toward the viewer with urgency rather than aggression. She leans even closer, her brows tightening, and says in a low, breath-caught voice (S1): <d>[Chinese] 抓住我。</d>\n\nWithout cutting, the camera is pulled forward a small distance as if her hand has made contact. At around 00:02.500, the frame steadies slightly while strands of her lavender hair sway across her cheek. She turns her eyes briefly past the viewer’s shoulder toward the glowing disturbance in the background, then snaps her gaze back. Her breathing becomes more visible in her shoulders and parted lips.\n\nAt around 00:04.500, she braces, shifts one knee forward just out of frame, and exerts force to pull the viewer upright; the camera rises with her in one continuous motion. As the camera lifts, the background opens a little, revealing more of the empty street, drifting dust, and the ominous pulsing purple light behind her.\n\nAt around 00:06.000, she steps half a pace closer to shield the viewer, placing herself between the lens and the distant threat. Her expression softens for a beat without losing tension. She keeps one hand near the viewer as if making sure they are steady, then says with controlled urgency (S1): <d>[Chinese] 别回头，跟我走。</d>\n\nIn the final second, she begins to guide the viewer to move with her; the camera starts to pivot slightly to the right as if preparing to run beside her, while the purple glow flickers behind her shoulder and her lavender hair catches the changing light before the shot ends mid-motion.\n\noverall_soundscape: A quiet outdoor city ambience runs underneath the shot, with distant wind through roadside trees and faint urban street hush. Close to the camera, her clothing shifts softly, her movement causes light scuffs against the ground, and her breathing is audible during the pull-up motion. A low unstable energy hum pulses from the distant purple disturbance near the end.\n\nnon_diegetic_music: Sparse low electronic pulses begin almost immediately, joined by restrained string textures at a slow tempo. The music grows slightly in intensity after she says the second line, then holds tension without reaching a full climax.\n",
+        "# MiniMax H3 无参考图版本提示词\n\nintegrated_multimodal_description: [Shot 1] Cinematic, high-end 3D anime realism. An extreme close shot opens on a young woman leaning intensely toward the camera. She has lavender hair with loose strands falling across her face, soft freckles, focused amber-brown eyes, and black tactical outerwear. Behind her is a blurred urban street in daylight, with trees filtering soft natural light and a dark purple luminous mass pulsing ominously in the distance. She is already reaching toward the lens as the shot begins.\n\nThe camera holds close and shakes slightly with small amplitude, as if the viewer has just fallen backward onto the pavement. In the first second, her gloved hand moves into clearer focus as she reaches toward the viewer with urgency rather than aggression. She leans even closer, her brows tightening, and says in a low, breath-caught voice (S1): <d>[Chinese] 抓住我。</d>\n\nWithout cutting, the camera is pulled forward a small distance as if her hand has made contact. At around 00:02.500, the frame steadies slightly while strands of her lavender hair sway across her cheek. She turns her eyes briefly past the viewer’s shoulder toward the glowing disturbance in the background, then snaps her gaze back. Her breathing becomes more visible in her shoulders and parted lips.\n\nAt around 00:04.500, she braces, shifts one knee forward just out of frame, and exerts force to pull the viewer upright; the camera rises with her in one continuous motion. As the camera lifts, the background opens a little, revealing more of the empty street, drifting dust, and the ominous pulsing purple light behind her.\n\nAt around 00:06.000, she steps half a pace closer to shield the viewer, placing herself between the lens and the distant threat. Her expression softens for a beat without losing tension. She keeps one hand near the viewer as if making sure they are steady, then says with controlled urgency (S1): <d>[Chinese] 别回头，跟我走。</d>\n\nIn the final second, she begins to guide the viewer to move with her; the camera starts to pivot slightly to the right as if preparing to run beside her, while the purple glow flickers behind her shoulder and her lavender hair catches the changing light before the shot ends mid-motion.\n\noverall_soundscape: A quiet outdoor city ambience runs underneath the shot, with distant wind through roadside trees and faint urban street hush. Close to the camera, her clothing shifts softly, her movement causes light scuffs against the ground, and her breathing is audible during the pull-up motion. A low unstable energy hum pulses from the distant purple disturbance near the end.\n\nnon_diegetic_music: Sparse low electronic pulses begin almost immediately, joined by restrained string textures at a slow tempo. The music grows slightly in intensity after she says the second line, then holds tension without reaching a full climax.\n",
         1344,
         768,
         124,
@@ -676,7 +676,7 @@
         "filename_prefix": "MiniMax H3 Star7",
         "format": "video/nvenc_h264-mp4",
         "pix_fmt": "yuv420p",
-        "bitrate": 35,
+        "bitrate": 15,
         "megabit": true,
         "save_metadata": true,
         "pingpong": false,
@@ -689,7 +689,7 @@
         "filename_prefix": "MiniMax H3",
         "format": "video/nvenc_h264-mp4",
         "pix_fmt": "yuv420p",
-        "bitrate": 35,
+        "bitrate": 15,
         "megabit": true,
         "save_metadata": true,
         "pingpong": false,
@@ -934,7 +934,7 @@
         true,
         true,
         4096,
-        false,
+        true,
         true,
         "comfy_kitchen_int8"
       ],
@@ -943,7 +943,7 @@
         "auto_halve_on_oom": true,
         "verbose": true,
         "mlp_chunk_tokens": 4096,
-        "disable_dynamic_prefetch": false,
+        "disable_dynamic_prefetch": true,
         "reuse_mlp_weights": true,
         "attention_backend": "comfy_kitchen_int8"
       },
@@ -1087,7 +1087,7 @@
       },
       "widgets_values": [
         956334294915427,
-        "fixed"
+        "randomize"
       ],
       "widgets_values_named": {
         "noise_seed": 881229333182023,
