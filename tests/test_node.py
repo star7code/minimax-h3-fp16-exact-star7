@@ -1,7 +1,9 @@
 import importlib.util
 import copy
+import gc
 import json
 import sys
+import weakref
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -130,6 +132,28 @@ def test_quantized_model_preserves_native_dispatch():
     assert patched.force_cast_weights is False
     assert patched.object_patches["manual_cast_dtype"] is torch.float16
     assert patched.model_options["transformer_options"][module.PATCH_MODE] == "postload-quantized"
+
+
+def test_model_wrappers_are_weakly_bound_and_idempotent():
+    module = load_nodes()
+    patcher, diffusion = make_h3_patcher(module)
+    patched = apply_node(module, patcher)
+
+    wrapper = patched.object_patches["diffusion_model.blocks.0.forward"]
+    assert isinstance(wrapper.__self__, weakref.ProxyTypes)
+    assert all(
+        cell.cell_contents is not diffusion
+        for cell in (wrapper.__func__.__closure__ or ())
+    )
+
+    reapplied = apply_node(module, patched)
+    assert len(reapplied.object_patches) == len(patched.object_patches)
+    assert reapplied.model_options["transformer_options"][module.PATCH_FLAG] == module.NODE_VERSION
+
+    diffusion_ref = weakref.ref(diffusion)
+    del reapplied, patched, patcher, diffusion
+    gc.collect()
+    assert diffusion_ref() is None
 
 
 def test_quantization_summary_reports_convrot():

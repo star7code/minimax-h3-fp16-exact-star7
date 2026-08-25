@@ -1,4 +1,5 @@
 import logging
+import weakref
 from collections import Counter
 from types import MethodType
 
@@ -19,6 +20,29 @@ PATCH_FLAG = "star7_minimax_h3_fp16_exact_fix"
 PATCH_MODE = "star7_minimax_h3_fp16_mode"
 K_OUT_PROJ = 64.0
 K_FC2 = 256.0
+
+
+def _weak_callable(value):
+    """Keep a bound model method callable without retaining its owner."""
+    owner = getattr(value, "__self__", None)
+    function = getattr(value, "__func__", value)
+    if owner is None or isinstance(owner, weakref.ProxyTypes):
+        return value
+
+    owner_ref = weakref.ref(owner)
+
+    def call(*args, **kwargs):
+        current = owner_ref()
+        if current is None:
+            raise ReferenceError("Star7 FP16 wrapper owner was released")
+        return function(current, *args, **kwargs)
+
+    return call
+
+
+def _weak_method(owner, function):
+    """Bind a patch function through a weak proxy instead of the model module."""
+    return MethodType(function, weakref.proxy(owner))
 
 
 def _condition_proj_forward(original_forward):
@@ -152,22 +176,28 @@ def _patch_h3_model(model, loader_native=False):
     condition_proj = diffusion_model.condition_proj
     patched.add_object_patch(
         "diffusion_model.condition_proj.forward",
-        MethodType(_condition_proj_forward(condition_proj.forward), condition_proj),
+        _weak_method(
+            condition_proj,
+            _condition_proj_forward(_weak_callable(condition_proj.forward)),
+        ),
     )
 
     for index, block in enumerate(diffusion_model.blocks):
         out_proj = block.attn.out_proj
         patched.add_object_patch(
             f"diffusion_model.blocks.{index}.attn.out_proj.forward",
-            MethodType(_out_proj_forward(out_proj.forward), out_proj),
+            _weak_method(out_proj, _out_proj_forward(_weak_callable(out_proj.forward))),
         )
         patched.add_object_patch(
             f"diffusion_model.blocks.{index}.mlp.forward",
-            MethodType(_mlp_forward(block.mlp.forward), block.mlp),
+            _weak_method(block.mlp, _mlp_forward(_weak_callable(block.mlp.forward))),
         )
         patched.add_object_patch(
             f"diffusion_model.blocks.{index}.forward",
-            MethodType(_block_forward(block.forward, minimax_module), block),
+            _weak_method(
+                block,
+                _block_forward(_weak_callable(block.forward), minimax_module),
+            ),
         )
 
     if loader_native:
