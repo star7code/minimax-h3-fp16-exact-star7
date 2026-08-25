@@ -14,7 +14,7 @@ import comfy.supported_models
 import comfy.utils
 
 
-NODE_VERSION = "2.0.6"
+NODE_VERSION = "2.0.7"
 PATCH_FLAG = "star7_minimax_h3_fp16_exact_fix"
 PATCH_MODE = "star7_minimax_h3_fp16_mode"
 K_OUT_PROJ = 64.0
@@ -288,7 +288,8 @@ class MiniMaxH3FP16LoaderStar7:
         supported, reason = _supports_fp16_fix()
         if not supported:
             logging.info(
-                "[Star7 H3 FP16] Native loader bypassed: %s. Using ComfyUI default loader.",
+                "[Star7 H3 FP16] No FP16 repair needed: %s. Using the ComfyUI "
+                "default loader with no Star7 precision patches.",
                 reason,
             )
             return (comfy.sd.load_diffusion_model(unet_path),)
@@ -325,7 +326,11 @@ class MiniMaxH3FP16ExactFixStar7:
 
         supported, reason = _supports_fp16_fix()
         if not supported:
-            logging.info("[Star7 H3 FP16] Patch skipped: %s.", reason)
+            logging.info(
+                "[Star7 H3 FP16] No-op: %s; this architecture does not need "
+                "the pre-BF16 overflow repair. Model left unchanged.",
+                reason,
+            )
             return (model,)
 
         try:

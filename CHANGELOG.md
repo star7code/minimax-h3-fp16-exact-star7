@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.7 - 2026-08-25
+
+- Reaffirmed this project as the sole owner of the MiniMax H3 FP16 Exact
+  compute-dtype, FP32 residual/SwiGLU, condition projection, and power-of-two
+  `out_proj`/`fc2` overflow repairs.
+- SM80+ remains a zero-patch path and now logs explicitly that native BF16
+  architectures need no repair and the model is left unchanged.
+
 ## 2.0.6 - 2026-08-19
 
 - Updated the packaged RTX 20-series workflow to the final chunk-node defaults
