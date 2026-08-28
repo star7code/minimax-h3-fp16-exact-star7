@@ -1,6 +1,6 @@
 # MiniMax H3 FP16 Exact Fix - Star7
 
-[中文说明](#中文说明) · [示例工作流](examples/workflows)
+[中文说明](#中文说明) · [English](README_EN.md) · [示例工作流](examples/workflows)
 
 Native FP16 model loading and scoped numerical protection for ComfyUI MiniMax H3 on GPUs without native BF16 Tensor Core acceleration. Quantized checkpoints retain eligible INT8/ConvRot kernels instead of being expanded into dense FP16 weights.
 
@@ -63,7 +63,7 @@ MiniMax H3 Native FP16 Loader - Star7
 
 FP16 Loader 与 [MiniMax H3 Activation Chunk - Star7](https://github.com/star7code/minimax-h3-chunk-star7) 可以分别独立使用：前者负责 FP16 载入与数值保护，后者负责 QKV/RoPE/MLP 激活分块和注意力选择。
 
-仓库提供 RTX 20 系示例工作流：[MiniMax-H3-FP16-Chunk-RTX20-Star7.json](examples/workflows/MiniMax-H3-FP16-Chunk-RTX20-Star7.json)。示例工作流还使用以下项目：
+仓库提供 RTX 20 系示例工作流：[中文版](examples/workflows/MiniMax-H3-FP16-Chunk-RTX20-Star7.json) · [English](examples/workflows/MiniMax-H3-FP16-Chunk-RTX20-Star7-English.json)。示例工作流还使用以下项目：
 
 - [MiniMax H3 Activation Chunk - Star7](https://github.com/star7code/minimax-h3-chunk-star7)
 - [MiniMax H3 Audio Conditioning T8](https://github.com/T8mars/comfyui-minimax-h3-audio-T8)

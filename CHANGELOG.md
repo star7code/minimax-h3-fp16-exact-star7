@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.8 - 2026-08-29
+
+- Added a complete English README and an English RTX 20-series example
+  workflow while preserving the original workflow topology and runtime values.
+
 ## 2.0.7 - 2026-08-25
 
 - Reaffirmed this project as the sole owner of the MiniMax H3 FP16 Exact
