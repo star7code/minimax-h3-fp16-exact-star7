@@ -2,13 +2,13 @@
 
 [中文说明](#中文说明) · [English](README_EN.md) · [示例工作流](examples/workflows)
 
-Native FP16 model loading and scoped numerical protection for ComfyUI MiniMax H3 on GPUs without native BF16 Tensor Core acceleration. Quantized checkpoints retain eligible INT8/ConvRot kernels instead of being expanded into dense FP16 weights.
+Native FP16 model loading and scoped numerical protection for ComfyUI MiniMax H3 on pre-BF16 architectures. On SM80+, the loader explicitly corrects H3 to native BF16 even when the launcher globally requests FP16. Quantized checkpoints retain eligible INT8/ConvRot kernels instead of being expanded into dense FP16 weights.
 
 The overflow-protection method is derived from the MIT-licensed [Amduraznak/minimax-h3-fp16-fix](https://github.com/Amduraznak/minimax-h3-fp16-fix). This package provides a native MiniMax H3 loader, quantization-aware dispatch, architecture checks, scoped ModelPatcher integration, diagnostics, and ComfyUI workflow support.
 
 ## 中文说明
 
-本项目为 MiniMax H3 提供原生 FP16 模型载入和数值保护，主要面向 RTX 20 系（Turing）及其他缺少原生 BF16 Tensor Core 加速的显卡。
+本项目为 MiniMax H3 提供原生 FP16 模型载入和数值保护，主要面向 RTX 20 系（Turing）及其他缺少原生 BF16 Tensor Core 加速的显卡；SM80+ 会自动纠正为原生 BF16。
 
 推荐使用 `MiniMax H3 Native FP16 Loader - Star7` 载入扩散模型。它在模型创建阶段确定 FP16 计算类型，同时保留原生 MixedPrecisionOps 的 INT8/ConvRot 权重布局，并在推理前安装 MiniMax H3 的 FP16 溢出保护。
 
@@ -22,7 +22,7 @@ The overflow-protection method is derived from the MIT-licensed [Amduraznak/mini
 | FP16 数值保护 | 对残差、SwiGLU、attention `out_proj` 和 MLP `fc2` 设置对应的 FP32 计算区与溢出保护 |
 | 量化路径保留 | 对原生 MixedPrecisionOps 模型保持 `force_cast_weights=false`，保留可用的 INT8/ConvRot 内核 |
 | 模型格式识别 | 支持原生 H3 权重、`model.diffusion_model.` 外层前缀及文件级 `_quantization_metadata` |
-| 架构检测 | 在 SM80+ 上使用 ComfyUI 默认 BF16 路径；SM61 因 FP16 吞吐较低而跳过修复 |
+| 架构检测 | SM80+ 始终显式纠正为 BF16；SM61 因 FP16 吞吐较低而跳过修复 |
 | 生命周期安全 | 修复仅安装在克隆后的 ModelPatcher 上，模型方法使用弱绑定，避免旧模型被补丁闭包长期持有 |
 | 运行诊断 | 报告载入模式、量化格式、强制权重转换状态、权重补丁数量和 DiT block 数量 |
 
@@ -49,7 +49,7 @@ MiniMax H3 在 FP16 下需要保护若干数值敏感位置：
 | `MiniMax H3 Native FP16 Loader - Star7` | 推荐节点；从 `diffusion_models` 载入原生 MiniMax H3，并在模型创建阶段应用 FP16 策略和数值保护 |
 | `MiniMax H3 FP16 Exact Fix (Legacy) - Star7` | 已加载 `MODEL` 的兼容入口；仅用于仍包含该 class ID 的工作流 |
 
-在 Ampere、Ada、Blackwell 等 SM80+ 架构上使用载入节点时，会直接调用 ComfyUI 默认模型载入路径，不安装 FP16 修复，因此不会增加 Transformer block 包装或额外计算。
+在 Ampere、Ada、Blackwell 等 SM80+ 架构上，本节点与增强载入节点保持相同策略：显式以 BF16 创建 H3，即使启动器全局开启 `--fp16-unet` 也只对 H3 自动纠正，不安装 FP16 block 包装。
 
 ## 推荐连接方式
 
@@ -102,7 +102,7 @@ ComfyUI 原生量化线性层通过 MixedPrecisionOps 保存量化权重及调�
 | NVIDIA Volta（V100、Titan V） | 支持 FP16 路径 |
 | NVIDIA P100（SM60） | 可使用 FP16 路径，需实机验证目标工作流 |
 | NVIDIA P40 / GTX 10（SM61） | 自动跳过，保留 ComfyUI 默认载入路径 |
-| NVIDIA Ampere 及更新架构（SM80+） | 自动跳过，使用原生 BF16 路径 |
+| NVIDIA Ampere 及更新架构（SM80+） | 始终显式纠正为原生 BF16，不安装 FP16 block 包装 |
 | AMD ROCm | 实验性支持，取决于当前 PyTorch 与 ComfyUI 环境 |
 
 ## 安装与更新

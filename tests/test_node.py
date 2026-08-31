@@ -40,6 +40,43 @@ def test_scale_constants_are_powers_of_two():
         assert integer > 0 and integer & (integer - 1) == 0
 
 
+def test_sm80_loader_corrects_h3_to_bf16():
+    module = load_nodes()
+    loaded = object()
+    node = module.MiniMaxH3FP16LoaderStar7()
+    with (
+        mock.patch.object(torch.cuda, "is_available", return_value=True),
+        mock.patch.object(torch.cuda, "get_device_capability", return_value=(8, 6)),
+        mock.patch.object(module.folder_paths, "get_full_path_or_raise", return_value="h3.safetensors"),
+        mock.patch.object(module.comfy.sd, "load_diffusion_model", return_value=loaded) as native_load,
+        mock.patch.object(module, "_load_h3_native_fp16") as fp16_load,
+    ):
+        assert node.load_model("h3.safetensors") == (loaded,)
+    native_load.assert_called_once_with(
+        "h3.safetensors", model_options={"dtype": torch.bfloat16}
+    )
+    fp16_load.assert_not_called()
+
+
+def test_sm80_loader_overrides_launcher_fp16_with_bf16():
+    module = load_nodes()
+    loaded = object()
+    node = module.MiniMaxH3FP16LoaderStar7()
+    with (
+        mock.patch.object(torch.cuda, "is_available", return_value=True),
+        mock.patch.object(torch.cuda, "get_device_capability", return_value=(8, 6)),
+        mock.patch.object(module.comfy.model_management.args, "fp16_unet", True),
+        mock.patch.object(module.folder_paths, "get_full_path_or_raise", return_value="h3.safetensors"),
+        mock.patch.object(module.comfy.sd, "load_diffusion_model", return_value=loaded) as native_load,
+        mock.patch.object(module, "_load_h3_native_fp16") as fp16_load,
+    ):
+        assert node.load_model("h3.safetensors") == (loaded,)
+    native_load.assert_called_once_with(
+        "h3.safetensors", model_options={"dtype": torch.bfloat16}
+    )
+    fp16_load.assert_not_called()
+
+
 def make_h3_patcher(module, quantized=False):
     import comfy.ldm.minimax.model as minimax
 
@@ -323,6 +360,8 @@ def test_normalize_restores_unprefixed_legacy_quants_after_prefix_removal():
 if __name__ == "__main__":
     test_registration()
     test_scale_constants_are_powers_of_two()
+    test_sm80_loader_corrects_h3_to_bf16()
+    test_sm80_loader_overrides_launcher_fp16_with_bf16()
     test_dense_model_patch_is_scoped_and_complete()
     test_quantized_model_preserves_native_dispatch()
     test_quantization_summary_reports_convrot()

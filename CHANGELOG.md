@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.9 - 2026-08-31
+
+- SM80+ 与增强载入项目保持相同策略：无论启动器是否全局开启 FP16，均只
+  针对 H3 显式纠正为原生 BF16，并在日志说明未安装 FP16 repair wrappers。
+- SM75 FP16 Exact、量化权重分发和历史工作流行为保持不变。
+
 ## 2.0.8 - 2026-08-29
 
 - Added a complete English README and an English RTX 20-series example

@@ -15,7 +15,7 @@ import comfy.supported_models
 import comfy.utils
 
 
-NODE_VERSION = "2.0.8"
+NODE_VERSION = "2.0.9"
 PATCH_FLAG = "star7_minimax_h3_fp16_exact_fix"
 PATCH_MODE = "star7_minimax_h3_fp16_mode"
 K_OUT_PROJ = 64.0
@@ -134,7 +134,7 @@ def _supports_fp16_fix():
 
     capability = torch.cuda.get_device_capability()
     if capability[0] >= 8:
-        return False, f"sm{capability[0]}{capability[1]} supports native BF16"
+        return False, f"sm{capability[0]}{capability[1]} uses native BF16"
     if capability == (6, 1):
         return False, "sm61 has very slow FP16 throughput"
     return True, f"sm{capability[0]}{capability[1]}"
@@ -306,7 +306,7 @@ class MiniMaxH3FP16LoaderStar7:
     FUNCTION = "load_model"
     CATEGORY = "Star7/MiniMax H3"
     DESCRIPTION = (
-        "Recommended MiniMax H3 loader for pre-BF16 GPUs. Creates dense and "
+        "Explicit protected-FP16 MiniMax H3 loader for supported GPUs. Creates dense and "
         "MixedPrecisionOps layers with FP16 compute from the start, preserves "
         "INT8/ConvRot dispatch, and installs the exact overflow fix."
     )
@@ -317,12 +317,27 @@ class MiniMaxH3FP16LoaderStar7:
         )
         supported, reason = _supports_fp16_fix()
         if not supported:
-            logging.info(
-                "[Star7 H3 FP16] No FP16 repair needed: %s. Using the ComfyUI "
-                "default loader with no Star7 precision patches.",
-                reason,
+            native_bf16 = bool(
+                torch.cuda.is_available()
+                and torch.version.hip is None
+                and torch.cuda.get_device_capability()[0] >= 8
             )
-            return (comfy.sd.load_diffusion_model(unet_path),)
+            logging.info(
+                "[Star7 H3 FP16] Precision policy: %s. %s",
+                reason,
+                (
+                    "A global FP16 UNet setting is overridden for H3; loading "
+                    "explicit native BF16 with no FP16 repair wrappers."
+                    if native_bf16
+                    else "Using ComfyUI default precision with no Star7 precision patches."
+                ),
+            )
+            model_options = {"dtype": torch.bfloat16} if native_bf16 else {}
+            return (
+                comfy.sd.load_diffusion_model(
+                    unet_path, model_options=model_options
+                ),
+            )
 
         logging.info("[Star7 H3 FP16] Loading at creation-time FP16 | device=%s", reason)
         return (_load_h3_native_fp16(unet_path),)

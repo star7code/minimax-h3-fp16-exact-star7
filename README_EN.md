@@ -2,7 +2,7 @@
 
 [中文](README.md) · [Example workflows](examples/workflows)
 
-Native FP16 model loading and scoped numerical protection for ComfyUI MiniMax H3 on GPUs without native BF16 Tensor Core acceleration. Quantized checkpoints retain eligible INT8/ConvRot kernels instead of being expanded into resident dense FP16 weights.
+Native FP16 model loading and scoped numerical protection for ComfyUI MiniMax H3 on pre-BF16 architectures. On SM80+, the loader explicitly corrects H3 to native BF16 even when the launcher globally requests FP16. Quantized checkpoints retain eligible INT8/ConvRot kernels instead of being expanded into resident dense FP16 weights.
 
 The overflow-protection method is derived from the MIT-licensed [Amduraznak/minimax-h3-fp16-fix](https://github.com/Amduraznak/minimax-h3-fp16-fix). This package adds a native H3 loader, quantization-aware dispatch, architecture checks, scoped ModelPatcher integration, diagnostics, and workflow support.
 
@@ -14,7 +14,7 @@ The overflow-protection method is derived from the MIT-licensed [Amduraznak/mini
 | Numerical protection | Protects residual, SwiGLU, attention `out_proj`, and MLP `fc2` boundaries with their required FP32 regions and overflow scaling |
 | Quantized-path retention | Keeps `force_cast_weights=false` for native MixedPrecisionOps models, preserving eligible INT8/ConvRot kernels |
 | Format recognition | Supports native H3 weights, `model.diffusion_model.` prefixes, and file-level `_quantization_metadata` |
-| Architecture handling | Uses the normal ComfyUI BF16 path on SM80+ and skips the fix on low-FP16-throughput SM61 |
+| Architecture handling | Always corrects H3 to explicit BF16 on SM80+ and skips the fix on low-FP16-throughput SM61 |
 | Lifecycle safety | Installs the fix only on a cloned ModelPatcher and uses weak method binding to avoid retaining obsolete models |
 | Diagnostics | Reports load mode, quantization format, force-cast state, weight patches, and DiT block count |
 
@@ -41,7 +41,7 @@ The node changes model compute precision and overflow boundaries only. It does n
 | `MiniMax H3 Native FP16 Loader - Star7` | Recommended entry point; loads a native H3 diffusion model and applies FP16 policy during model creation |
 | `MiniMax H3 FP16 Exact Fix (Legacy) - Star7` | Compatibility entry point for workflows that already contain this historical class ID |
 
-On Ampere, Ada, Blackwell, and other SM80+ architectures, the loader delegates directly to ComfyUI's normal model-loading path and does not install the FP16 repair wrappers.
+On Ampere, Ada, Blackwell, and other SM80+ architectures, this node follows the same policy as the Enhanced Loader: it explicitly creates H3 with BF16, overrides a global `--fp16-unet` setting for H3 only, and installs no FP16 block wrappers.
 
 ## Recommended connection order
 
@@ -77,7 +77,7 @@ Standard ComfyUI LoRA patches may temporarily dequantize affected layers under d
 | NVIDIA Volta (V100, Titan V) | FP16 path supported |
 | NVIDIA P100 (SM60) | FP16 path available; validate the target workflow |
 | NVIDIA P40 / GTX 10 (SM61) | Fix skipped; keeps ComfyUI's default path |
-| NVIDIA Ampere and newer (SM80+) | Fix skipped; uses native BF16 path |
+| NVIDIA Ampere and newer (SM80+) | Always corrected to explicit native BF16 with no FP16 block wrappers |
 | AMD ROCm | Experimental; depends on the installed PyTorch and ComfyUI environment |
 
 ## Installation
