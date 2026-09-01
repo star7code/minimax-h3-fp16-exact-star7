@@ -99,8 +99,8 @@ Restart ComfyUI after installing or updating.
 
 ## Example workflow
 
-- [RTX 20-series workflow — English](examples/workflows/MiniMax-H3-FP16-Chunk-RTX20-Star7-English.json)
-- [RTX 20-series workflow — Chinese](examples/workflows/MiniMax-H3-FP16-Chunk-RTX20-Star7.json)
+- [General workflow — English](examples/workflows/MiniMax-H3-FP16-Chunk-Star7-English.json): one graph covers SM75 and SM80+ with automatic safe precision selection.
+- [通用工作流（中文）](examples/workflows/MiniMax-H3-FP16-Chunk-Star7.json)
 
 ## Scope and diagnostics
 

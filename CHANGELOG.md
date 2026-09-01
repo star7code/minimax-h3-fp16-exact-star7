@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.10 - 2026-09-01
+
+- Replaced the RTX 20-series-specific examples with one universal Chinese
+  workflow and one fully translated English workflow. The same graph now uses
+  the loader's protected FP16 policy on SM75 and safe BF16 correction on SM80+.
+- Refreshed workflow notes for current chunk, preview, reference-media, export,
+  LoRA, and launcher-precision behavior.
+
 ## 2.0.9 - 2026-08-31
 
 - SM80+ 与增强载入项目保持相同策略：无论启动器是否全局开启 FP16，均只
