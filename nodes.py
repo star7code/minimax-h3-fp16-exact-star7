@@ -1,6 +1,7 @@
 import logging
 import weakref
 from collections import Counter
+from contextvars import ContextVar
 from types import MethodType
 
 import folder_paths
@@ -10,16 +11,21 @@ import torch.nn.functional as F
 import comfy.model_detection
 import comfy.model_management
 import comfy.ops
+import comfy.patcher_extension
 import comfy.sd
 import comfy.supported_models
 import comfy.utils
 
 
-NODE_VERSION = "2.0.9"
+NODE_VERSION = "2.0.11"
 PATCH_FLAG = "star7_minimax_h3_fp16_exact_fix"
 PATCH_MODE = "star7_minimax_h3_fp16_mode"
+TE_RUNTIME_KEY = "te_speed_minimax_h3_runtime"
+TE_BOUNDARY_WRAPPER_KEY = "star7_minimax_h3_fp16_commercial_te_boundary"
 K_OUT_PROJ = 64.0
 K_FC2 = 256.0
+
+_te_logged_runtime = ContextVar("star7_h3_fp16_te_logged_runtime", default=None)
 
 
 def _weak_callable(value):
@@ -104,6 +110,51 @@ def _block_forward(original_forward, minimax_module):
     return forward
 
 
+def _commercial_te_runtime(transformer_options):
+    if not isinstance(transformer_options, dict):
+        return None
+    return transformer_options.get(TE_RUNTIME_KEY)
+
+
+def _commercial_te_boundary_wrapper(
+    executor, x, timestep, context, transformer_options={}, *args, **kwargs
+):
+    """Protect H3's TE-facing packed residual carrier without changing compute ops."""
+    runtime = _commercial_te_runtime(transformer_options)
+    if runtime is None or not isinstance(context, torch.Tensor):
+        return executor(x, timestep, context, transformer_options, *args, **kwargs)
+
+    protected_context = context.to(dtype=torch.float32)
+    runtime_id = id(runtime)
+    if _te_logged_runtime.get() != runtime_id:
+        logging.info(
+            "[Star7 H3 FP16] Commercial TE compatibility active | "
+            "cache/residual boundary=FP32 | inner compute=FP16/INT8"
+        )
+        _te_logged_runtime.set(runtime_id)
+
+    return executor(
+        x, timestep, protected_context, transformer_options, *args, **kwargs
+    )
+
+
+def _install_commercial_te_boundary(patched):
+    transformer_options = patched.model_options.setdefault("transformer_options", {})
+    wrapper_type = comfy.patcher_extension.WrappersMP.DIFFUSION_MODEL
+    installed = (
+        transformer_options.get("wrappers", {})
+        .get(wrapper_type, {})
+        .get(TE_BOUNDARY_WRAPPER_KEY, [])
+    )
+    if installed:
+        return
+    patched.add_wrapper_with_key(
+        wrapper_type,
+        TE_BOUNDARY_WRAPPER_KEY,
+        _commercial_te_boundary_wrapper,
+    )
+
+
 def _quantization_summary(diffusion_model):
     formats = Counter()
     for module in diffusion_model.modules():
@@ -149,6 +200,7 @@ def _patch_h3_model(model, loader_native=False):
         raise TypeError("Connected model is not native ComfyUI MiniMax H3")
 
     transformer_options = patched.model_options.setdefault("transformer_options", {})
+    _install_commercial_te_boundary(patched)
     if transformer_options.get(PATCH_FLAG):
         logging.info("[Star7 H3 FP16] Patch is already present; skipping duplicate.")
         return patched
@@ -207,7 +259,6 @@ def _patch_h3_model(model, loader_native=False):
 
     transformer_options[PATCH_FLAG] = NODE_VERSION
     transformer_options[PATCH_MODE] = mode
-
     weight_patches = len(getattr(patched, "patches", {}))
     backend = _format_quantization(quant_formats) if is_quantized else "dense-fp16"
     logging.info(

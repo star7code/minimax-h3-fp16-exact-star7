@@ -97,6 +97,8 @@ git clone https://github.com/star7code/minimax-h3-fp16-exact-star7.git
 
 Restart ComfyUI after installing or updating.
 
+Commercial TE-Speed-MiniMaxH3 is supported through a narrowly scoped boundary wrapper: only its cache/residual carrier is promoted to FP32, while H3 recomputation remains FP16/INT8. The wrapper stays inactive for ordinary execution and open-source cache paths.
+
 ## Example workflow
 
 - [General workflow — English](examples/workflows/MiniMax-H3-FP16-Chunk-Star7-English.json): one graph covers SM75 and SM80+ with automatic safe precision selection.

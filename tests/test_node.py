@@ -137,6 +137,10 @@ def make_h3_patcher(module, quantized=False):
         def add_object_patch(self, name, value):
             self.object_patches[name] = value
 
+        def add_wrapper_with_key(self, wrapper_type, key, wrapper):
+            wrappers = self.model_options["transformer_options"].setdefault("wrappers", {})
+            wrappers.setdefault(wrapper_type, {}).setdefault(key, []).append(wrapper)
+
     return FakePatcher(), diffusion
 
 
@@ -159,6 +163,86 @@ def test_dense_model_patch_is_scoped_and_complete():
     assert patched.model_options["transformer_options"][module.PATCH_FLAG] == module.NODE_VERSION
     assert patched.model_options["transformer_options"][module.PATCH_MODE] == "postload-dense"
     assert len(patched.object_patches) == 2 + 3 * len(diffusion.blocks)
+    wrappers = patched.model_options["transformer_options"]["wrappers"][
+        module.comfy.patcher_extension.WrappersMP.DIFFUSION_MODEL
+    ]
+    assert list(wrappers) == [module.TE_BOUNDARY_WRAPPER_KEY]
+
+
+def test_commercial_te_boundary_promotes_only_the_context_carrier():
+    module = load_nodes()
+    context = torch.ones(1, 2, 3, dtype=torch.float16)
+    x = torch.ones(1, dtype=torch.float16)
+    runtime = object()
+    seen = {}
+
+    def executor(*args, **kwargs):
+        seen["x"] = args[0]
+        seen["context"] = args[2]
+        seen["options"] = args[3]
+        return "ok"
+
+    options = {module.TE_RUNTIME_KEY: runtime}
+    assert module._commercial_te_boundary_wrapper(executor, x, None, context, options) == "ok"
+    assert seen["x"] is x
+    assert seen["context"].dtype is torch.float32
+    assert seen["context"].device == context.device
+    assert seen["options"] is options
+
+
+def test_boundary_wrapper_leaves_noncommercial_and_oss_paths_unchanged():
+    module = load_nodes()
+    context = torch.ones(1, 2, 3, dtype=torch.float16)
+    seen = []
+
+    def executor(*args, **kwargs):
+        seen.append(args[2])
+        return "ok"
+
+    for options in ({}, {"te_speed_minimax_h3_oss_runtime": object()}, None):
+        assert module._commercial_te_boundary_wrapper(executor, None, None, context, options) == "ok"
+        assert seen[-1] is context
+
+
+def test_fp32_te_carrier_keeps_block_compute_inputs_fp16():
+    module = load_nodes()
+    seen = {}
+
+    class Identity(torch.nn.Module):
+        def forward(self, value):
+            return value
+
+    class Block:
+        norm1 = Identity()
+        norm2 = Identity()
+
+        def adaln_proj(self, _t_emb):
+            return (torch.zeros(1),) * 6
+
+        def attn(self, value, **_kwargs):
+            seen["attention"] = value.dtype
+            return value
+
+        def mlp(self, value):
+            seen["mlp"] = value.dtype
+            return value
+
+    fake_minimax = SimpleNamespace(
+        _mod_scale_shift=lambda value, *_args: value,
+        _mod_gate=lambda residual, _gate, update, _segments: residual + update,
+    )
+    protected_forward = module._block_forward(lambda *_args, **_kwargs: None, fake_minimax)
+    result = protected_forward(
+        Block(),
+        torch.ones(1, 2, dtype=torch.float32),
+        torch.zeros(1),
+        [],
+        None,
+        {module.TE_RUNTIME_KEY: object()},
+    )
+
+    assert result.dtype is torch.float32
+    assert seen == {"attention": torch.float16, "mlp": torch.float16}
 
 
 def test_quantized_model_preserves_native_dispatch():
@@ -363,6 +447,9 @@ if __name__ == "__main__":
     test_sm80_loader_corrects_h3_to_bf16()
     test_sm80_loader_overrides_launcher_fp16_with_bf16()
     test_dense_model_patch_is_scoped_and_complete()
+    test_commercial_te_boundary_promotes_only_the_context_carrier()
+    test_boundary_wrapper_leaves_noncommercial_and_oss_paths_unchanged()
+    test_fp32_te_carrier_keeps_block_compute_inputs_fp16()
     test_quantized_model_preserves_native_dispatch()
     test_quantization_summary_reports_convrot()
     test_native_loader_builds_fp16_operations_before_model_creation()

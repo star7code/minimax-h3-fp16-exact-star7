@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.11 - 2026-09-04
+
+- Added compatibility for commercial TE-Speed-MiniMaxH3 cache acceleration.
+  Only the TE cache/residual carrier is promoted to FP32; H3 block recomputation
+  remains on the protected FP16/INT8 path.
+- The keyed boundary wrapper is also retained when an already-patched H3 model
+  is passed through the loader, while ordinary and open-source cache paths are
+  left unchanged.
+
 ## 2.0.10 - 2026-09-01
 
 - Replaced the RTX 20-series-specific examples with one universal Chinese

@@ -105,6 +105,8 @@ ComfyUI 原生量化线性层通过 MixedPrecisionOps 保存量化权重及调�
 | NVIDIA Ampere 及更新架构（SM80+） | 始终显式纠正为原生 BF16，不安装 FP16 block 包装 |
 | AMD ROCm | 实验性支持，取决于当前 PyTorch 与 ComfyUI 环境 |
 
+兼容商业版 TE-Speed-MiniMaxH3：仅在检测到其运行时标记后，将缓存/残差交界载体保护为 FP32；H3 内部重计算仍保持 FP16/INT8。未使用 TE、使用普通缓存或开源 TE 路径时不会触发该兼容层。
+
 ## 安装与更新
 
 ComfyUI Manager / Comfy Registry：
