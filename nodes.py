@@ -1,4 +1,5 @@
 import logging
+import sys
 import weakref
 from collections import Counter
 from contextvars import ContextVar
@@ -17,7 +18,7 @@ import comfy.supported_models
 import comfy.utils
 
 
-NODE_VERSION = "2.0.11"
+NODE_VERSION = "2.0.12"
 PATCH_FLAG = "star7_minimax_h3_fp16_exact_fix"
 PATCH_MODE = "star7_minimax_h3_fp16_mode"
 TE_RUNTIME_KEY = "te_speed_minimax_h3_runtime"
@@ -26,6 +27,89 @@ K_OUT_PROJ = 64.0
 K_FC2 = 256.0
 
 _te_logged_runtime = ContextVar("star7_h3_fp16_te_logged_runtime", default=None)
+
+_PROCESS_WIDE_CONFLICT_MARKERS = (
+    "comfyui-minimax-h3-turing",
+    "comfyui_minimax_h3_turing",
+)
+
+
+def _callable_source(value):
+    function = getattr(value, "__func__", value)
+    code = getattr(function, "__code__", None)
+    return str(getattr(code, "co_filename", "") or "").replace("\\", "/").lower()
+
+
+def _is_conflicting_callable(value):
+    source = _callable_source(value)
+    return any(marker in source for marker in _PROCESS_WIDE_CONFLICT_MARKERS)
+
+
+def _neutralize_process_wide_h3_conflicts():
+    """Restore H3 core methods saved by the foreign monkey patch and continue."""
+    conflicts = []
+    for module in tuple(sys.modules.values()):
+        source = str(getattr(module, "__file__", "") or "").replace("\\", "/").lower()
+        name = str(getattr(module, "__name__", "") or "").lower()
+        if any(marker in source or marker in name for marker in _PROCESS_WIDE_CONFLICT_MARKERS):
+            conflicts.append(module)
+    if not conflicts:
+        return False
+
+    import comfy.ldm.minimax.model as minimax_module
+    if getattr(minimax_module, "_star7_turing_plugin_neutralized", False):
+        return True
+
+    restore_map = (
+        (minimax_module.MiniMaxH3Model, "__init__", "_orig_model_init"),
+        (minimax_module.MLP, "forward", "_orig_mlp_forward"),
+        (minimax_module.DiTBlock, "forward", "_orig_block_forward"),
+        (minimax_module.Attention, "forward", "_orig_attention_forward"),
+        (minimax_module.Attention, "forward", "_orig_attn_forward"),
+    )
+    restored = 0
+    for owner, attribute, saved_name in restore_map:
+        candidates = [getattr(module, saved_name, None) for module in conflicts]
+        original = next(
+            (candidate for candidate in candidates if callable(candidate) and not _is_conflicting_callable(candidate)),
+            None,
+        )
+        if original is not None and _is_conflicting_callable(getattr(owner, attribute, None)):
+            setattr(owner, attribute, original)
+            restored += 1
+
+    logging.warning(
+        "[Star7 H3 Compatibility] Conflicting plugin detected: "
+        "comfyui-minimax-h3-turing. Its process-wide H3 patches were "
+        "neutralized for this run (%d core methods restored); the Star7 native "
+        "path remains active. Disable the Turing plugin and restart ComfyUI. "
+        "Bypassing its workflow nodes is not sufficient.",
+        restored,
+    )
+    minimax_module._star7_turing_plugin_neutralized = True
+    return True
+
+
+def _strip_conflicting_instance_forwards(diffusion_model):
+    """Unwrap direct instance forwards installed while the foreign patch was active."""
+    for module in diffusion_model.modules():
+        current = vars(module).get("forward")
+        if current is None or not _is_conflicting_callable(current):
+            continue
+        function = getattr(current, "__func__", current)
+        candidates = list(getattr(function, "__defaults__", ()) or ())
+        candidates.extend(
+            cell.cell_contents for cell in (getattr(function, "__closure__", ()) or ())
+        )
+        original = next(
+            (candidate for candidate in candidates if callable(candidate) and not _is_conflicting_callable(candidate)),
+            None,
+        )
+        if original is not None:
+            module.forward = original
+    for block in getattr(diffusion_model, "blocks", ()):
+        if hasattr(block, "_h3_fp16_fix"):
+            block._h3_fp16_fix = False
 
 
 def _weak_callable(value):
@@ -192,10 +276,12 @@ def _supports_fp16_fix():
 
 
 def _patch_h3_model(model, loader_native=False):
+    _neutralize_process_wide_h3_conflicts()
     import comfy.ldm.minimax.model as minimax_module
 
     patched = model.clone()
     diffusion_model = patched.get_model_object("diffusion_model")
+    _strip_conflicting_instance_forwards(diffusion_model)
     if not isinstance(diffusion_model, minimax_module.MiniMaxH3Model):
         raise TypeError("Connected model is not native ComfyUI MiniMax H3")
 
@@ -314,6 +400,7 @@ def _normalize_h3_state_dict(state_dict, metadata):
 
 
 def _load_h3_native_fp16(unet_path, disable_dynamic=False):
+    _neutralize_process_wide_h3_conflicts()
     state_dict, metadata = comfy.utils.load_torch_file(
         unet_path, return_metadata=True
     )
@@ -363,6 +450,9 @@ class MiniMaxH3FP16LoaderStar7:
     )
 
     def load_model(self, unet_name):
+        # Run before model construction so the foreign process-wide __init__
+        # hook cannot modify the newly loaded H3 model.
+        _neutralize_process_wide_h3_conflicts()
         unet_path = folder_paths.get_full_path_or_raise(
             "diffusion_models", unet_name
         )

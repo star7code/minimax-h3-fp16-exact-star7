@@ -3,6 +3,7 @@ import copy
 import gc
 import json
 import sys
+import types
 import weakref
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,6 +23,83 @@ def load_nodes():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _function_from_source(filename, source, name, globals_dict=None):
+    namespace = {} if globals_dict is None else dict(globals_dict)
+    exec(compile(source, filename, "exec"), namespace)
+    return namespace[name]
+
+
+def test_turing_process_patch_is_neutralized_before_star7_install():
+    module = load_nodes()
+    from comfy.ldm.minimax import model as minimax_module
+
+    plugin_name = "comfyui_minimax_h3_turing_test_double"
+    plugin = types.ModuleType(plugin_name)
+    plugin.__file__ = "C:/custom_nodes/comfyui-minimax-h3-turing/nodes.py"
+    owners = (
+        (minimax_module.MiniMaxH3Model, "__init__", "_orig_model_init"),
+        (minimax_module.MLP, "forward", "_orig_mlp_forward"),
+        (minimax_module.DiTBlock, "forward", "_orig_block_forward"),
+        (minimax_module.Attention, "forward", "_orig_attention_forward"),
+    )
+    saved_attributes = [
+        (owner, attribute, getattr(owner, attribute))
+        for owner, attribute, _saved_name in owners
+    ]
+    marker = getattr(minimax_module, "_star7_turing_plugin_neutralized", None)
+    marker_existed = hasattr(minimax_module, "_star7_turing_plugin_neutralized")
+    try:
+        if marker_existed:
+            delattr(minimax_module, "_star7_turing_plugin_neutralized")
+        for index, (owner, attribute, saved_name) in enumerate(owners):
+            original = _function_from_source(
+                f"star7_original_{index}.py",
+                f"def original_{index}(*args, **kwargs): return {index}\n",
+                f"original_{index}",
+            )
+            conflicting = _function_from_source(
+                f"C:/custom_nodes/comfyui-minimax-h3-turing/patch_{index}.py",
+                f"def conflicting_{index}(*args, **kwargs): return -{index + 1}\n",
+                f"conflicting_{index}",
+            )
+            setattr(plugin, saved_name, original)
+            setattr(owner, attribute, conflicting)
+        sys.modules[plugin_name] = plugin
+
+        assert module._neutralize_process_wide_h3_conflicts() is True
+        for owner, attribute, saved_name in owners:
+            assert getattr(owner, attribute) is getattr(plugin, saved_name)
+    finally:
+        sys.modules.pop(plugin_name, None)
+        for owner, attribute, original in saved_attributes:
+            setattr(owner, attribute, original)
+        if marker_existed:
+            minimax_module._star7_turing_plugin_neutralized = marker
+        elif hasattr(minimax_module, "_star7_turing_plugin_neutralized"):
+            delattr(minimax_module, "_star7_turing_plugin_neutralized")
+
+
+def test_turing_instance_forward_wrapper_is_unwrapped():
+    module = load_nodes()
+    wrapped = torch.nn.Identity()
+    original = wrapped.forward
+    conflicting = _function_from_source(
+        "C:/custom_nodes/comfyui-minimax-h3-turing/instance.py",
+        "def conflicting(value, _original=original): return _original(value)\n",
+        "conflicting",
+        {"original": original},
+    )
+    wrapped.forward = conflicting
+    diffusion_model = torch.nn.Module()
+    diffusion_model.child = wrapped
+    diffusion_model.blocks = [SimpleNamespace(_h3_fp16_fix=True)]
+
+    module._strip_conflicting_instance_forwards(diffusion_model)
+
+    assert wrapped.forward is original
+    assert diffusion_model.blocks[0]._h3_fp16_fix is False
 
 
 def test_registration():
@@ -442,6 +520,8 @@ def test_normalize_restores_unprefixed_legacy_quants_after_prefix_removal():
 
 
 if __name__ == "__main__":
+    test_turing_process_patch_is_neutralized_before_star7_install()
+    test_turing_instance_forward_wrapper_is_unwrapped()
     test_registration()
     test_scale_constants_are_powers_of_two()
     test_sm80_loader_corrects_h3_to_bf16()

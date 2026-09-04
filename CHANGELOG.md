@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.12 - 2026-09-04
+
+- Added the same process-wide `comfyui-minimax-h3-turing` isolation used by
+  the enhanced loader. Conflicting H3 class hooks are restored before model
+  construction, and already-wrapped instance forwards are removed safely.
+- The warning is plain English for reliable Windows-console output and clearly
+  instructs users to disable the conflicting plugin and restart ComfyUI.
+
 ## 2.0.11 - 2026-09-04
 
 - Added compatibility for commercial TE-Speed-MiniMaxH3 cache acceleration.
